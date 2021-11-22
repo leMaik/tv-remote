@@ -1,0 +1,114 @@
+<html>
+  <head>
+    <title>Android Mirroring demo</title>
+    <style>
+      canvas {
+        position: absolute;
+      }
+      body {
+        background: url(PSDFebFrameNam147.jpg);
+        background-size: cover;
+      }
+      #video-box {
+        position: absolute;
+        background: rgb(13, 14, 27);
+      }
+      #video-box > canvas {
+        position: relative;
+        max-width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <button onclick="wsavc.send('key', 24)">Vol+</button>
+    <button onclick="wsavc.send('key', 25)">Vol-</button>
+    <button onclick="wsavc.send('key', 164)">Mute</button>
+    <button onclick="wsavc.send('key', 3)">Home</button>
+    <button onclick="wsavc.send('key', 4)">Back</button>
+    <button onclick="wsavc.send('key', 26)">Power</button>
+    <br />
+    <pre style="position: absolute; top: 50px; left: 0; background: #fff">
+      UP: 19,
+      DOWN: 20,
+      LEFT: 21,
+      RIGHT: 22,
+      DPAD_CENTER: 23,
+      BACK: 4,
+      RED: 183,
+      GREEN: 184,
+      YELLOW: 185,
+      BLUE: 186,
+      TELETEXT: 233,
+      SLEEP: 223,
+      WAKEUP: 224,
+      TV: 170,
+      POWER: 26,
+    </pre>
+    <div id="video-box"></div>
+    <input type="text" style="font-family: monospace" id="command" />
+    <script type="text/javascript" src="WSAvcPlayer.js"></script>
+    <script>
+      // video frame
+      var videoBox = document.getElementById("video-box");
+
+      function updatePos() {
+        const scale = Math.max(
+          window.innerWidth / 5000,
+          window.innerHeight / 3000
+        );
+        videoBox.style.left = `${1434 * scale}px`;
+        videoBox.style.top = `${699 * scale}px`;
+        videoBox.style.width = `${2125 * scale}px`;
+      }
+      updatePos();
+      window.addEventListener("resize", () => updatePos());
+
+      // video player
+      var wsavc = new WSAvcPlayer.default({ useWorker: true });
+      videoBox.appendChild(wsavc.AvcPlayer.canvas);
+      window.wsavc = wsavc;
+
+      var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      wsavc.connect(protocol + "//" + window.location.host + "/device");
+
+      const codes = {
+        ArrowLeft: 21,
+        ArrowRight: 22,
+        ArrowUp: 19,
+        ArrowDown: 20,
+        Enter: 23,
+        Backspace: 4,
+      };
+
+      // keyboard control
+      document.addEventListener("keydown", (e) => {
+        console.log(e.key);
+        const code = codes[e.key];
+        if (code) {
+          wsavc.send("key", code);
+        }
+      });
+
+      document.getElementById("command").addEventListener(
+        "keydown",
+        (e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") {
+            e.preventDefault();
+            wsavc.send("run", e.target.value);
+            e.target.value = "";
+          }
+        },
+        true
+      );
+
+      wsavc.on("stream_active", (active) =>
+        console.log("Stream is ", active ? "active" : "offline")
+      );
+
+      wsavc.on("custom_event_from_server", (event) =>
+        console.log("got event from server", event)
+      );
+    </script>
+  </body>
+</html>

@@ -7,8 +7,13 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "MIT",
+  "license": "GPL-3.0+",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "express-ws": "^5.0.2",
+    "prepend-transform": "0.0.1019",
+    "stream-concat": "^1.0.0",
+    "stream-split": "^1.1.0",
+    "ws-avc-player": "^2.0.2"
   }
 }
