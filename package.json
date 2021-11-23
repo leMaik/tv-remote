@@ -11,6 +11,8 @@
   "dependencies": {
     "express": "^4.17.1",
     "express-ws": "^5.0.2",
+    "listr2": "^3.13.4",
+    "localtunnel": "^2.0.2",
     "prepend-transform": "0.0.1019",
     "stream-concat": "^1.0.0",
     "stream-split": "^1.1.0",
