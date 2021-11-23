@@ -2,6 +2,8 @@ const path = require("path");
 const express = require("express");
 const expressWs = require("express-ws");
 const mirrorTcpStream = require("../vendor/mirror-tcp-stream");
+const scrcpy = require("./scrcpy-protocol");
+const { execute } = require("./interpreter");
 
 function createServer(config) {
   const app = express();
@@ -55,22 +57,21 @@ function createServer(config) {
       console.log(msg);
       const { action, payload } = JSON.parse(msg);
       if (action === "key") {
-        const pressKeyMsg = (code, down) => {
-          const buffer = Buffer.alloc(10, 0);
-          buffer.writeUInt8(0, 0); // INJECT_KEYCODE
-          buffer.writeUInt8(down ? 0 : 1, 1); // AKEY_EVENT_ACTION_UP
-          buffer.writeInt32BE(code, 2); // keyCode
-          return buffer;
-        };
         const key = parseInt(payload, 10);
         if (key) {
           const socket = mirrorTcpStream.getStream();
-          socket.write(pressKeyMsg(key, true), "binary");
-          socket.write(pressKeyMsg(key, false), "binary");
+          socket.write(scrcpy.pressKey(key, true));
+          socket.write(scrcpy.pressKey(key, false));
         }
       } else if (action === "run") {
-        const { run } = require("./index");
-        run(payload);
+        execute(payload, {
+          pressKey: (key) => {
+            const socket = mirrorTcpStream.getStream();
+            socket.write(scrcpy.pressKey(key, true));
+            socket.write(scrcpy.pressKey(key, false));
+          },
+          // TODO enter text via scrcpy
+        });
       }
     });
   });
