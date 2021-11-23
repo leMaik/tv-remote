@@ -92,6 +92,16 @@ const config = {
         },
         options: { persistentOutput: true },
       },
+      {
+        title: "Create tunnel",
+        skip: (ctx) => !ctx.localtunnel,
+        task: async (ctx, task) => {
+          const localtunnel = require("localtunnel");
+          const tunnel = await localtunnel({ port: config.port });
+          task.output = tunnel.url;
+        },
+        options: { persistentOutput: true },
+      },
     ],
     {
       concurrent: true,
@@ -101,7 +111,9 @@ const config = {
   );
 
   try {
-    await tasks.run();
+    await tasks.run({
+      localtunnel: process.env.LOCALTUNNEL === "true",
+    });
   } catch (e) {
     process.exit(-1);
   }
