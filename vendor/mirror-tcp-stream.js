@@ -54,15 +54,18 @@ const headerData = {
   },
 };
 
-let str;
+let feedStream;
+let width = 1920;
+let height = 1080;
+
 // This returns the live stream only, without the parameter chunks
 function getLiveStream(options) {
-  console.log(`Connecting to ${options.feed_ip}:${options.feed_port}`);
-  str = net.connect(options.feed_port, options.feed_ip, () => {
+  // console.log(`Connecting to ${options.feed_ip}:${options.feed_port}`);
+  feedStream = net.connect(options.feed_port, options.feed_ip, () => {
     console.log("Remote stream ready");
   });
 
-  return str.pipe(new Splitter(NALseparator)).pipe(
+  return feedStream.pipe(new Splitter(NALseparator)).pipe(
     new stream.Transform({
       transform: function (chunk, encoding, callback) {
         const chunkWithSeparator = Buffer.concat([NALseparator, chunk]);
@@ -72,6 +75,7 @@ function getLiveStream(options) {
         // Capture the first SPS & PPS frames, so we can send stream parameters on connect.
         if (chunkType === 7 || chunkType === 8) {
           headerData.addParameterFrame(chunkWithSeparator);
+          // TODO get stream width and height from sps frame with h264-sps-parser
         } else {
           // The live stream only includes the non-parameter chunks
           this.push(chunkWithSeparator);
@@ -97,4 +101,5 @@ module.exports = function (options) {
   return new StreamConcat([headerData.getStream(), liveStream]);
 };
 
-module.exports.getStream = () => str;
+module.exports.getStream = () => feedStream;
+module.exports.getSize = () => ({ width, height });

@@ -11,11 +11,12 @@
       }
       #video-box {
         position: absolute;
-        background: rgb(13, 14, 27);
+        background: #000;
       }
       #video-box > canvas {
         position: relative;
         max-width: 100%;
+        background-color: #000 !important;
       }
     </style>
   </head>
@@ -59,6 +60,7 @@
         videoBox.style.left = `${1434 * scale}px`;
         videoBox.style.top = `${699 * scale}px`;
         videoBox.style.width = `${2125 * scale}px`;
+        videoBox.style.height = `${(2125 * scale) / (16 / 9)}px`;
       }
       updatePos();
       window.addEventListener("resize", () => updatePos());

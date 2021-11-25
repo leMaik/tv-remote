@@ -25,12 +25,13 @@ function createServer(config) {
   app.ws("/device", (ws) => {
     console.log("Client connected");
 
+    const { width, height } = mirrorTcpStream.getSize();
     ws.send(
       JSON.stringify({
         action: "initialize",
         payload: {
-          width: config.width,
-          height: config.height,
+          width,
+          height,
         },
       })
     );
