@@ -1,5 +1,6 @@
 /**
- * Copied from androidmirrroing, which is licensed under the GPL v3 or later.
+ * Adapted from androidmirrroing, which is licensed under the GPL v3 or later, to extract
+ * the stream dimensions form the SPS frame.
  * Copyright (c) 2018 vuquangtrong
  * @see https://github.com/vuquangtrong/androidmirrroing/blob/master/mirroring/lib/mirror-tcp-stream
  *
@@ -19,8 +20,10 @@ const net = require("net");
 const Splitter = require("stream-split");
 const stream = require("stream");
 const StreamConcat = require("stream-concat");
+const h264SpsParser = require("h264-sps-parser");
+const { EventEmitter, once } = require("events");
 
-const NALseparator = new Buffer([0, 0, 0, 1]);
+const NALseparator = Buffer.from([0, 0, 0, 1]);
 
 const headerData = {
   _waitingStream: new stream.PassThrough(),
@@ -55,14 +58,13 @@ const headerData = {
 };
 
 let feedStream;
-let width = 1920;
-let height = 1080;
+const tcpStreamEvents = new EventEmitter();
 
 // This returns the live stream only, without the parameter chunks
 function getLiveStream(options) {
   // console.log(`Connecting to ${options.feed_ip}:${options.feed_port}`);
   feedStream = net.connect(options.feed_port, options.feed_ip, () => {
-    console.log("Remote stream ready");
+    console.log("Remote stream connected");
   });
 
   return feedStream.pipe(new Splitter(NALseparator)).pipe(
@@ -72,10 +74,22 @@ function getLiveStream(options) {
 
         const chunkType = chunk[0] & 0b11111;
 
+        // Calculate the frame size from the SPS frame
+        if (chunkType === 7) {
+          const sps = h264SpsParser.parse(chunk);
+          const width =
+            (sps.pic_width_in_mbs << 4) -
+            (sps.frame_cropping.left + sps.frame_cropping.right) * 2;
+          const height =
+            ((sps.pic_height_in_map_units << 4) <<
+              (sps.frame_mbs_only_flag === 0 ? 1 : 0)) -
+            (sps.frame_cropping.top + sps.frame_cropping.bottom) * 2;
+          tcpStreamEvents.emit("dimensions", { width, height });
+        }
+
         // Capture the first SPS & PPS frames, so we can send stream parameters on connect.
         if (chunkType === 7 || chunkType === 8) {
           headerData.addParameterFrame(chunkWithSeparator);
-          // TODO get stream width and height from sps frame with h264-sps-parser
         } else {
           // The live stream only includes the non-parameter chunks
           this.push(chunkWithSeparator);
@@ -102,4 +116,19 @@ module.exports = function (options) {
 };
 
 module.exports.getStream = () => feedStream;
-module.exports.getSize = () => ({ width, height });
+module.exports.getSize = (() => {
+  let dimensions;
+  tcpStreamEvents.on("dimensions", (newDimensions) => {
+    console.log(
+      `Stream dimensions are ${newDimensions.width}x${newDimensions.height}`
+    );
+    dimensions = newDimensions;
+  });
+  return async () => {
+    if (dimensions != null) {
+      return dimensions;
+    }
+    const [newDimensions] = await once(tcpStreamEvents, "dimensions");
+    return newDimensions;
+  };
+})();
